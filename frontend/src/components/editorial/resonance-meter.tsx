@@ -125,7 +125,7 @@ export default function ResonanceMeter({ briefs, talkTitle, speakerName }: Reson
             {/* Special badges */}
             {trendCount > 0 && (
               <Tooltip>
-                <TooltipTrigger asChild>
+                <TooltipTrigger>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-orange-400
                                    bg-orange-400/8 border border-orange-400/20 rounded-full px-2.5 py-0.5
                                    cursor-default transition-colors hover:bg-orange-400/12">
@@ -139,7 +139,7 @@ export default function ResonanceMeter({ briefs, talkTitle, speakerName }: Reson
             )}
             {machineCount > 0 && (
               <Tooltip>
-                <TooltipTrigger asChild>
+                <TooltipTrigger>
                   <span className="flex items-center gap-1.5 text-xs font-medium text-violet-400
                                    bg-violet-400/8 border border-violet-400/20 rounded-full px-2.5 py-0.5
                                    cursor-default transition-colors hover:bg-violet-400/12">
@@ -201,7 +201,7 @@ function StatItem({
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
+      <TooltipTrigger>
         <div className="flex items-baseline gap-1.5 cursor-default
                         transition-opacity hover:opacity-80">
           <span className={`text-2xl font-bold tabular-nums leading-none ${valueColor}`}>
@@ -230,7 +230,7 @@ function ScoreBar({
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
+      <TooltipTrigger>
         <div className="flex items-center gap-1.5 cursor-default">
           {/* Stacked bar */}
           <div className="flex h-2 w-32 overflow-hidden rounded-full bg-zinc-800">
