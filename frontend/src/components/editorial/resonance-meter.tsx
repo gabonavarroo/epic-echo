@@ -1,0 +1,262 @@
+// Resonance Meter — top stats bar for the Editorial Board.
+// Shows aggregated brief/platform/stage/time-saved metrics + a score distribution bar.
+// 'use client' required for shadcn Tooltip interactivity.
+"use client";
+
+import { estimateTimeSaved } from "@/lib/utils";
+import type { Brief, Platform, JourneyStage } from "@/lib/types";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+
+interface ResonanceMeterProps {
+  briefs:      Brief[];
+  talkTitle:   string;
+  speakerName: string;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function countUnique<T>(arr: T[]): number {
+  return new Set(arr).size;
+}
+
+function scoreDistribution(briefs: Brief[]) {
+  let high = 0, mid = 0, low = 0;
+  for (const b of briefs) {
+    if (b.resonance_score === null) continue;
+    if (b.resonance_score >= 80) high++;
+    else if (b.resonance_score >= 60) mid++;
+    else low++;
+  }
+  return { high, mid, low, total: high + mid + low };
+}
+
+function avgScore(briefs: Brief[]): number | null {
+  const scored = briefs.filter((b) => b.resonance_score !== null);
+  if (!scored.length) return null;
+  return Math.round(scored.reduce((s, b) => s + (b.resonance_score ?? 0), 0) / scored.length);
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export default function ResonanceMeter({ briefs, talkTitle, speakerName }: ResonanceMeterProps) {
+  const platforms  = countUnique(briefs.map((b) => b.platform as Platform));
+  const stages     = countUnique(briefs.map((b) => b.journey_stage as JourneyStage));
+  const timeSaved  = estimateTimeSaved(briefs.length);
+  const dist       = scoreDistribution(briefs);
+  const avg        = avgScore(briefs);
+
+  const trendCount    = briefs.filter((b) => b.is_trend_match).length;
+  const machineCount  = briefs.filter((b) => b.is_time_machine).length;
+
+  return (
+    <TooltipProvider delay={300}>
+      <div className="border-b border-zinc-800/60 bg-zinc-900/40 backdrop-blur-sm">
+        <div className="max-w-screen-2xl mx-auto px-8 py-4">
+
+          {/* ── Talk header row ──────────────────────────────────────────────── */}
+          <div className="flex items-baseline gap-3 mb-4">
+            <h1 className="text-lg font-semibold text-zinc-50 leading-tight line-clamp-1">
+              {talkTitle}
+            </h1>
+            <span className="text-sm text-zinc-500 whitespace-nowrap">
+              {speakerName}
+            </span>
+          </div>
+
+          {/* ── Stats row ────────────────────────────────────────────────────── */}
+          <div className="flex items-center gap-6">
+
+            {/* Stat: briefs count */}
+            <StatItem
+              value={briefs.length}
+              label="briefs"
+              accent="emerald"
+              tooltip="Total editor-ready briefs generated from this talk across all platforms and journey stages."
+            />
+
+            <Divider />
+
+            {/* Stat: platforms */}
+            <StatItem
+              value={platforms}
+              label="platforms"
+              tooltip="Number of unique platforms covered: LinkedIn, X (Twitter), Instagram Carousel, and Short-form Video."
+            />
+
+            <Divider />
+
+            {/* Stat: journey stages */}
+            <StatItem
+              value={stages}
+              label="stages"
+              tooltip="Journey stages targeted: Awareness, Consideration, Decision, and Retention — tailoring tone and CTA per stage."
+            />
+
+            <Divider />
+
+            {/* Stat: time saved */}
+            <StatItem
+              value={timeSaved}
+              label="saved"
+              accent="emerald"
+              tooltip="Estimated editor time saved vs. manual brief writing (at ~7 min per brief)."
+            />
+
+            <Divider />
+
+            {/* Avg score */}
+            {avg !== null && (
+              <>
+                <StatItem
+                  value={avg}
+                  label="avg score"
+                  accent={avg >= 80 ? "emerald" : avg >= 60 ? "yellow" : "orange"}
+                  tooltip={`Average Resonance Score across all briefs — rated on 6 axes: hook strength, evidence quality, voice fidelity, format fit, stage clarity, and novelty.`}
+                />
+                <Divider />
+              </>
+            )}
+
+            {/* Special badges */}
+            {trendCount > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-orange-400
+                                   bg-orange-400/8 border border-orange-400/20 rounded-full px-2.5 py-0.5
+                                   cursor-default transition-colors hover:bg-orange-400/12">
+                    🔥 {trendCount} trending
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Briefs generated by Trend Hijacker — matched to a live trending headline via vector similarity and rewritten in EPIC Lab&apos;s voice.
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {machineCount > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-violet-400
+                                   bg-violet-400/8 border border-violet-400/20 rounded-full px-2.5 py-0.5
+                                   cursor-default transition-colors hover:bg-violet-400/12">
+                    🔮 {machineCount} time machine
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  &apos;Then &amp; Now&apos; card — connects a past founder prediction to a real-world outcome that later proved it right.
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Score distribution bar — right-aligned */}
+            {dist.total > 0 && (
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-[11px] text-zinc-600 uppercase tracking-wide">Score dist.</span>
+                <ScoreBar dist={dist} />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </TooltipProvider>
+  );
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function StatItem({
+  value,
+  label,
+  accent,
+  tooltip,
+}: {
+  value:    number | string;
+  label:    string;
+  accent?:  "emerald" | "yellow" | "orange";
+  tooltip?: string;
+}) {
+  const valueColor =
+    accent === "emerald"
+      ? "text-emerald-400"
+      : accent === "yellow"
+      ? "text-yellow-400"
+      : accent === "orange"
+      ? "text-orange-400"
+      : "text-zinc-100";
+
+  const inner = (
+    <div className="flex items-baseline gap-1.5 cursor-default">
+      <span className={`text-2xl font-bold tabular-nums leading-none ${valueColor}`}>
+        {value}
+      </span>
+      <span className="text-[11px] text-zinc-500 uppercase tracking-wide">{label}</span>
+    </div>
+  );
+
+  if (!tooltip) return inner;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-baseline gap-1.5 cursor-default
+                        transition-opacity hover:opacity-80">
+          <span className={`text-2xl font-bold tabular-nums leading-none ${valueColor}`}>
+            {value}
+          </span>
+          <span className="text-[11px] text-zinc-500 uppercase tracking-wide">{label}</span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>{tooltip}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function Divider() {
+  return <div className="h-6 w-px bg-zinc-800" />;
+}
+
+function ScoreBar({
+  dist,
+}: {
+  dist: { high: number; mid: number; low: number; total: number };
+}) {
+  const highPct = (dist.high / dist.total) * 100;
+  const midPct  = (dist.mid  / dist.total) * 100;
+  const lowPct  = (dist.low  / dist.total) * 100;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center gap-1.5 cursor-default">
+          {/* Stacked bar */}
+          <div className="flex h-2 w-32 overflow-hidden rounded-full bg-zinc-800">
+            <div
+              className="h-full bg-emerald-400/80 transition-all"
+              style={{ width: `${highPct}%` }}
+            />
+            <div
+              className="h-full bg-yellow-400/80 transition-all"
+              style={{ width: `${midPct}%` }}
+            />
+            <div
+              className="h-full bg-orange-400/70 transition-all"
+              style={{ width: `${lowPct}%` }}
+            />
+          </div>
+          {/* Legend dots */}
+          <span className="text-[10px] text-zinc-500 tabular-nums">
+            {Math.round(highPct)}%
+            <span className="text-emerald-400/70">↑</span>
+          </span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        Score breakdown — High (≥80): {dist.high} · Mid (60–79): {dist.mid} · Low (&lt;60): {dist.low}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
