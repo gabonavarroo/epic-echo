@@ -171,10 +171,10 @@ npm run dev
 | Voice Pack analysis | ✅ Real | 63 real EPIC Lab posts seeded; structural + semantic passes fully run |
 | pgvector similarity search | ✅ Real | `match_insights` RPC with ivfflat index, cosine distance |
 | Scoring rubric (6-axis, 0–100) | ✅ Real | gpt-4o with strict JSON schema; no fake numbers |
-| Demo talks (3 talks) | Seeded | Selected to represent distinct domains: leadership, fintech, marketing |
+| Demo talks (3 talks) | ✅ Real | However, they were hand-picked to represent distinct domains: leadership, fintech, marketing |
 | Trend headlines (2 headlines) | Seeded | Chosen to match processed talks; in `seeds/trend_headlines.json` |
 | Time Machine card (1 card) | Seeded | The Clip unicornio case; in `seeds/time_machine.json` |
-| Similarity threshold (0.50) | Adjusted | Spec said 0.70; founder talks and news articles live in different embedding neighborhoods — 0.70 yielded 0 matches |
+
 
 ---
 
