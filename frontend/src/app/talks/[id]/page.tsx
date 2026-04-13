@@ -1,23 +1,26 @@
-// Editorial Board — /talks/[id]
+// Editorial Board - /talks/[id]
 // Server component: fetches talk + briefs from Supabase.
 // KanbanBoard is a client component that owns groupBy/filter state.
 
 import { notFound } from "next/navigation";
 import Link         from "next/link";
-import { supabase }  from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import ResonanceMeter from "@/components/editorial/resonance-meter";
 import KanbanBoard    from "@/components/editorial/kanban-board";
-import type { Talk, Brief, Insight } from "@/lib/types";
+import type { Talk, Brief, Insight, TalkStatus } from "@/lib/types";
 
 export const revalidate = 60;
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 type InsightRow = Pick<Insight, "id" | "claim" | "speaker_quote" | "timestamp_start" | "timestamp_end">;
 
-// ── Data fetching ─────────────────────────────────────────────────────────────
+type TalkWithBriefsResult = {
+  talk: Talk;
+  briefs: Brief[];
+  insightMap: Record<string, InsightRow>;
+  isReady: boolean;
+};
 
-async function getTalkWithBriefs(id: string) {
+async function getTalkWithBriefs(id: string): Promise<TalkWithBriefsResult | null> {
   // 1. Fetch talk
   const { data: talk } = await supabase
     .from("talks")
@@ -26,6 +29,16 @@ async function getTalkWithBriefs(id: string) {
     .single() as { data: Talk | null };
 
   if (!talk) return null;
+
+  // If pipeline is still running or failed, do not fetch briefs yet.
+  if (talk.status !== "completed") {
+    return {
+      talk,
+      briefs: [],
+      insightMap: {},
+      isReady: false,
+    };
+  }
 
   // 2. Fetch insights for this talk (ids + metadata for drawer later)
   const { data: insightsRaw } = await supabase
@@ -37,23 +50,21 @@ async function getTalkWithBriefs(id: string) {
   const insightIds = insights.map((i) => i.id);
 
   if (!insightIds.length) {
-    return { talk, briefs: [], insightMap: {} };
+    return { talk, briefs: [], insightMap: {}, isReady: true };
   }
 
-  // 3. Fetch ALL briefs for this talk (in batches of 500 to be safe)
+  // 3. Fetch ALL briefs for this talk
   const { data: briefs } = await supabase
     .from("briefs")
     .select("*")
     .in("insight_id", insightIds)
     .order("resonance_score", { ascending: false }) as { data: Brief[] | null };
 
-  // Build insight lookup map (for drawer — passed through but not used in kanban cards)
+  // Build insight lookup map (for drawer - passed through but not used in kanban cards)
   const insightMap = Object.fromEntries(insights.map((i) => [i.id, i]));
 
-  return { talk, briefs: briefs ?? [], insightMap };
+  return { talk, briefs: briefs ?? [], insightMap, isReady: true };
 }
-
-// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function EditorialBoardPage({
   params,
@@ -65,43 +76,27 @@ export default async function EditorialBoardPage({
 
   if (!result) notFound();
 
-  const { talk, briefs } = result;
+  const { talk, briefs, isReady } = result;
+
+  if (!isReady) {
+    return <TalkProcessingState talk={talk} />;
+  }
 
   return (
     <main className="flex flex-col flex-1 min-h-0">
 
-      {/* ── Resonance Meter ─────────────────────────────────────────────── */}
+      {/* Resonance Meter */}
       <ResonanceMeter
         briefs={briefs}
         talkTitle={talk.title}
         speakerName={talk.speaker_name}
       />
 
-      {/* ── Board area ──────────────────────────────────────────────────── */}
+      {/* Board area */}
       <div className="flex-1 max-w-screen-2xl mx-auto w-full px-8 py-6">
+        <BackToTalksLink />
 
-        {/* Back link */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-xs text-zinc-500
-                     hover:text-zinc-300 transition-colors mb-5 group"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 16 16"
-            fill="currentColor"
-            className="h-3 w-3 transition-transform group-hover:-translate-x-0.5"
-          >
-            <path
-              fillRule="evenodd"
-              d="M14 8a.75.75 0 0 1-.75.75H3.56l2.22 2.22a.75.75 0 1 1-1.06 1.06l-3.5-3.5a.75.75 0 0 1 0-1.06l3.5-3.5a.75.75 0 0 1 1.06 1.06L3.56 7.25h9.69A.75.75 0 0 1 14 8Z"
-              clipRule="evenodd"
-            />
-          </svg>
-          Back to Talks
-        </Link>
-
-        {/* Kanban — client component, receives all data as props */}
+        {/* Kanban - client component, receives all data as props */}
         {briefs.length === 0 ? (
           <EmptyBriefs talkTitle={talk.title} />
         ) : (
@@ -112,13 +107,97 @@ export default async function EditorialBoardPage({
   );
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
+function BackToTalksLink() {
+  return (
+    <Link
+      href="/"
+      className="inline-flex items-center gap-1.5 text-xs text-zinc-500
+                 hover:text-zinc-300 transition-colors mb-5 group"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 16 16"
+        fill="currentColor"
+        className="h-3 w-3 transition-transform group-hover:-translate-x-0.5"
+      >
+        <path
+          fillRule="evenodd"
+          d="M14 8a.75.75 0 0 1-.75.75H3.56l2.22 2.22a.75.75 0 1 1-1.06 1.06l-3.5-3.5a.75.75 0 0 1 0-1.06l3.5-3.5a.75.75 0 0 1 1.06 1.06L3.56 7.25h9.69A.75.75 0 0 1 14 8Z"
+          clipRule="evenodd"
+        />
+      </svg>
+      Back to Talks
+    </Link>
+  );
+}
+
+function TalkProcessingState({ talk }: { talk: Talk }) {
+  const statusMeta: Record<TalkStatus, { label: string; detail: string }> = {
+    pending: {
+      label: "Pending",
+      detail: "This talk has been queued but the pipeline has not started processing it yet.",
+    },
+    transcribing: {
+      label: "Transcribing",
+      detail: "Audio is being converted into transcript segments. Brief generation is not available yet.",
+    },
+    extracting: {
+      label: "Extracting",
+      detail: "Insights are being extracted and embedded. Brief generation will unlock once complete.",
+    },
+    completed: {
+      label: "Completed",
+      detail: "Talk is ready.",
+    },
+    failed: {
+      label: "Failed",
+      detail: "The pipeline failed for this talk. Re-run ingest for this URL and then forge briefs.",
+    },
+  };
+
+  const meta = statusMeta[talk.status];
+  const isFailed = talk.status === "failed";
+
+  return (
+    <main className="flex flex-col flex-1 min-h-0">
+      <div className="flex-1 max-w-screen-lg mx-auto w-full px-8 py-8">
+        <BackToTalksLink />
+
+        <section className="rounded-2xl border border-zinc-800/70 bg-zinc-900/55 p-8">
+          <div className="flex flex-col items-center text-center gap-4">
+            <span className="text-3xl">{isFailed ? "!" : "..."}</span>
+            <h1 className="text-xl font-semibold text-zinc-100">{talk.title}</h1>
+            <p className="text-sm text-zinc-500">{talk.speaker_name}</p>
+
+            <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide ${
+              isFailed
+                ? "border-rose-400/40 bg-rose-400/12 text-rose-300"
+                : "border-amber-400/40 bg-amber-400/12 text-amber-300"
+            }`}>
+              {meta.label}
+            </span>
+
+            <p className="max-w-2xl text-sm text-zinc-400 leading-relaxed">
+              {meta.detail}
+            </p>
+
+            {isFailed && (
+              <p className="text-xs text-zinc-500">
+                Re-run with: <code className="font-mono text-zinc-300">python scripts/run_pipeline.py --url "{talk.youtube_url}"</code>
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
 
 function EmptyBriefs({ talkTitle }: { talkTitle: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-32
                     rounded-2xl border border-dashed border-zinc-800 text-center">
-      <span className="text-3xl">📭</span>
+      <span className="text-3xl">[]</span>
       <p className="text-sm font-medium text-zinc-400">No briefs for &ldquo;{talkTitle}&rdquo;</p>
       <p className="text-xs text-zinc-600">
         Run{" "}
