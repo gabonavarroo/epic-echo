@@ -1,0 +1,25 @@
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# Config
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# OpenAI (Azure OpenAI compatible)
+openai==1.59.6
+
+# Supabase
+supabase==2.11.0
+
+# Transcription & audio
+yt-dlp>=2026.3.17
+
+# Token counting
+tiktoken==0.8.0
+
+# HTTP client
+httpx==0.28.1
+
+# Database (for setup_db.py direct connection)
+psycopg2-binary==2.9.10

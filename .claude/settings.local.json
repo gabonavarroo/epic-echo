@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git config:*)",
+      "Bash(npm --version)",
+      "Bash(npx create-next-app@latest frontend --typescript --tailwind --app --src-dir --no-eslint --no-git --import-alias \"@/*\" --yes)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init --defaults -y)",
+      "Bash(npx shadcn@latest add sheet badge card separator tooltip dialog -y)",
+      "Bash(npm run:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(node -e \"const p = require\\('./node_modules/react-player/package.json'\\); console.log\\(Object.keys\\(p.exports || {}\\).slice\\(0,15\\)\\)\")"
+    ]
+  }
+}
