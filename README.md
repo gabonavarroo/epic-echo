@@ -188,7 +188,7 @@ This project was built almost entirely with AI assistance, end-to-end. Here is t
 | **Video analysis** | Initial analysis of talk transcripts and EPIC Lab's posting patterns with **Gemini 3.1 Pro** to identify what types of insights surface best |
 | **Scraping Posts** | Scraping posts and captions from the EPIC Lab's social media accounts to analyze language with **Claude Chrome Desktop Plugin** to recreate a genuine and accurate EPIC Lab's voice |
 | **Architecture & brainstorming** | Designed the full system (pipeline stages, data model, API contracts, frontend routes) in **Claude Projects** with **Claude Opus 4.6**, using the `/plan`, `/superpowers`, `/brainstorm`, and `/claude-api` skills to stress-test decisions before writing a line of code |
-| **Building** | All code — backend pipeline, frontend, Supabase schema, prompts, scoring rubric — written with **Claude Code** (Sonnet 4.6) and **OpenAI Codex** |
+| **Building** | All code — backend pipeline, frontend, Supabase schema, prompts, scoring rubric — written with **Claude Code** (Sonnet 4.6) and **OpenAI Codex** with assistance of **Gemini 3.1 Pro** |
 | **Deployment** | Frontend deployed to **Vercel** (zero-config Next.js); database on **Supabase** (Postgres + pgvector); no server to manage |
 | **LLM inference (runtime)** | All production LLM calls go through **Azure OpenAI** — gpt-4o for extraction, scoring, and voice analysis; Whisper for transcription; text-embedding-3-small for vector embeddings |
 
