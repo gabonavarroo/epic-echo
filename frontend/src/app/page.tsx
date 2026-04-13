@@ -1,15 +1,15 @@
-// Landing page — server component.
+// Landing page - server component.
 // Fetches talks + per-talk insight/brief counts from Supabase, then renders
-// the Hero section and the 3 TalkCards.
+// the Hero section and talk cards.
 
 import { supabase }  from "@/lib/supabase";
 import Hero          from "@/components/landing/hero";
 import TalkCard      from "@/components/landing/talk-card";
 import type { Talk } from "@/lib/types";
 
-export const revalidate = 60; // ISR — revalidate every 60s
+export const revalidate = 60; // ISR - revalidate every 60s
 
-// ── Data helpers ─────────────────────────────────────────────────────────────
+// Data helpers
 
 async function getTalksWithStats() {
   // 1. Fetch all talks
@@ -20,14 +20,14 @@ async function getTalksWithStats() {
 
   if (talksError || !talks) return { talks: [], statsMap: {}, totals: { insights: 0, briefs: 0 } };
 
-  // 2. Fetch all insights (just id + talk_id — no heavy payload)
+  // 2. Fetch all insights (just id + talk_id - no heavy payload)
   const { data: insights } = await supabase
     .from("insights")
     .select("id, talk_id") as { data: { id: string; talk_id: string }[] | null };
 
   const allInsights = insights ?? [];
 
-  // Build a map: talk_id → insight ids[]
+  // Build a map: talk_id -> insight ids[]
   const insightIdsByTalk: Record<string, string[]> = {};
   for (const ins of allInsights) {
     insightIdsByTalk[ins.talk_id] ??= [];
@@ -72,10 +72,28 @@ async function getTalksWithStats() {
   };
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+function getExtraDesktopPlacementClass(index: number, total: number): string {
+  const remainder = total % 3;
+  if (remainder === 0) return "";
+
+  const lastRowStart = total - remainder;
+  if (index < lastRowStart) return "";
+
+  if (remainder === 1) {
+    return index === total - 1 ? "md:col-start-2" : "";
+  }
+
+  if (index === total - 2) return "md:col-start-1";
+  if (index === total - 1) return "md:col-start-3";
+  return "";
+}
+
+// Page
 
 export default async function LandingPage() {
   const { talks, statsMap, totals } = await getTalksWithStats();
+  const topTalks = talks.slice(0, 3);
+  const extraTalks = talks.slice(3);
 
   return (
     <main className="flex flex-col flex-1">
@@ -87,7 +105,7 @@ export default async function LandingPage() {
         talkCount={talks.length}
       />
 
-      {/* ── Section header ─────────────────────────────────────────────────── */}
+      {/* Section header */}
       <section className="max-w-7xl mx-auto w-full px-8 pb-24">
         <div className="flex items-center gap-4 mb-8">
           <h2
@@ -108,32 +126,54 @@ export default async function LandingPage() {
           </span>
         </div>
 
-        {/* ── Cards grid ─────────────────────────────────────────────────── */}
+        {/* Cards grid */}
         {talks.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid grid-cols-3 gap-6">
-            {talks.map((talk, i) => (
-              <TalkCard
-                key={talk.id}
-                talk={talk}
-                insightCount={statsMap[talk.id]?.insightCount ?? 0}
-                briefCount={statsMap[talk.id]?.briefCount ?? 0}
-                index={i}
-              />
-            ))}
-          </div>
+          <>
+            {/* Top row: original 3 talks */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {topTalks.map((talk, i) => (
+                <TalkCard
+                  key={talk.id}
+                  talk={talk}
+                  insightCount={statsMap[talk.id]?.insightCount ?? 0}
+                  briefCount={statsMap[talk.id]?.briefCount ?? 0}
+                  index={i}
+                />
+              ))}
+            </div>
+
+            {/* Extra talks: centered final row when remainder is 1 or 2 */}
+            {extraTalks.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                {extraTalks.map((talk, i) => (
+                  <div
+                    key={talk.id}
+                    className={getExtraDesktopPlacementClass(i, extraTalks.length)}
+                  >
+                    <TalkCard
+                      talk={talk}
+                      insightCount={statsMap[talk.id]?.insightCount ?? 0}
+                      briefCount={statsMap[talk.id]?.briefCount ?? 0}
+                      index={i + topTalks.length}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </section>
 
-      {/* ── Footer strip ───────────────────────────────────────────────────── */}
+      {/* Footer strip */}
       <footer className="mt-auto border-t border-zinc-800/50 py-6">
         <div className="max-w-7xl mx-auto px-8 flex items-center justify-between">
           <span className="text-xs text-zinc-600">
             EPIC Echo · MAD Fellowship 2026
           </span>
           <span className="text-xs text-zinc-700 italic">
-            &ldquo;EchoStudio — content intelligence for any institution sitting on dormant expertise.&rdquo;
+            &ldquo;EchoStudio - content intelligence for any institution sitting on dormant expertise.&rdquo;
           </span>
         </div>
       </footer>
@@ -141,13 +181,13 @@ export default async function LandingPage() {
   );
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
+// Empty state
 
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-24
                     rounded-2xl border border-dashed border-zinc-800 text-center">
-      <span className="text-2xl">📭</span>
+      <span className="text-2xl">[]</span>
       <p className="text-sm text-zinc-500">No talks found in the database.</p>
       <p className="text-xs text-zinc-700">
         Run <code className="font-mono text-zinc-500">python scripts/run_pipeline.py --talk 1</code> to ingest a talk.
